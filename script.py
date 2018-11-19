@@ -25,14 +25,14 @@ tree = html.fromstring(page.text)
 script = str(tree.xpath('//script[contains(., "var TralbumData =")]/text()'))
 
 # get artist
-artist = re.findall(r'artist: "(.*?)"', script)[0]
+artist = re.findall(r'artist: "(.*?)"', script)[0].replace("\\", '').replace("/", '')
 
 # get track titles
 titles = re.findall(r'"title":"(.*?)",', script)
 
 # sanitize titles
 for x in range(len(titles)):
-    titles[x] = titles[x].replace('\\', '_').replace('//', '_')
+    titles[x] = titles[x].replace('\\', '').replace('/', '')
 
 # get released track indicators
 unreleased = [True if x == "true" else False for x in re.findall(r'"unreleased_track":(true|false),', script)]
@@ -71,13 +71,8 @@ with open (directory+"cover.jpg", 'wb') as jpg:
 # download and tag tracks
 for x in range(len(titles)):
     if not unreleased[x]:
-        sys.stdout.write('Downloading "'+titles[x]+'"')
+        sys.stdout.write('Downloading "'+titles[x]+'"...')
         sys.stdout.flush()
-
-        for x in range(3):
-            sys.stdout.write(".")
-            sys.stdout.flush()
-            sleep(0.5)
             
         with open(directory+str(x+1).zfill(2)+" "+ titles[x]+".mp3", 'wb') as mp3:
             mp3.write(requests.get(urls[0]).content)
@@ -98,6 +93,7 @@ for x in range(len(titles)):
         urls.pop(0)
 
         print(" tagged.")
+        sleep(1)
 
 print("-" * len(prep))
 print ("Download complete.")
