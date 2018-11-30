@@ -6,7 +6,6 @@ import os
 import re
 import requests
 import sys
-from time import sleep
 
 def sanitize(data):
     return re.sub(r'[\\/:"*?<>|]+', '', data)
@@ -79,8 +78,6 @@ for track in data['trackinfo']:
         audio.save(v2_version=3)
 
         print(' tagged.')
-
-        sleep(1)
 
 print('-'*len(prep))
 print('Download complete.')
