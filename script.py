@@ -8,6 +8,9 @@ import requests
 import sys
 from time import sleep
 
+def sanitize(data):
+    return re.sub(r'[\\/:"*?<>|]+', '', data)
+
 # get the album link
 if len(sys.argv) < 2:
     url = input('Enter link to album: ')
@@ -24,20 +27,19 @@ html = html.fromstring(page.text)
 # isolate the <script> tag with necessary data
 script = str(html.xpath('//script[contains(., "var TralbumData =")]/text()'))
 
-# break the data apart
-released = [False if x == 'true' else True for x in re.findall(r'"unreleased_track":(true|false)', script)]
-artist = re.findall(r'artist: "(.*?)"', script)[0].replace('\\', '').replace('/', '')
-titles = [t.replace('\\', '').replace('/', '') for t in re.findall(r'"title":"(.*?)",', script)]
-album_title = titles.pop(0) # the album title is the first item in the titles list
-titles = titles[0:len(released)] # trim the titles list to just the album tracks
-year = re.findall(r'album_release_date: "[0-9]{2} [a-zA-Z]{3} ([0-9]{4}?)', script)
-urls = re.findall(r'https://t4.bcbits.com/stream/[a-z0-9]*/mp3-128/[0-9]*\?p=0&ts=[0-9]*&t=[a-z0-9]*&token=[0-9]*_[a-z0-9]*', script)
+# extract and validate the JSON data
+j = re.findall(r'current: {.*artist: ".*?"', script)[0]
+j = '{' + j.replace('\\n', '').replace('    ', '').replace('\\', '').replace('\\\\"', '\\"') + '}'
+j = re.sub(r'packages: \[.*\],', '', j)
+j = re.sub(r'url: ".*?,', '', j)
+j = re.sub(r'({|,)([a-zA-Z_^true^false]*?):', r'\1"\2":', j)
+data = json.loads(j)
 
-prep = 'Preparing to download '+str(album_title)+' by '+str(artist)+'...'
+prep = 'Preparing to download '+data['current']['title'].replace('\\', '')+' by '+data['artist'].replace('\\', '')+'...'
 print(prep+'\n'+('-'*len(prep)))
 
 # make a new directory for the album
-directory = './downloads/'+artist+'/'+album_title+'/'
+directory = './downloads/'+sanitize(data['artist'])+'/'+sanitize(data['current']['title'])+'/'
 if not os.path.exists(directory):
     os.makedirs(directory)
 else:
@@ -51,37 +53,33 @@ print('Downloading album artwork...')
 with open(directory+"cover.jpg", 'wb') as jpg:
     jpg.write(album_cover.content)
 
-# download and tag tracks
-for x in range(len(titles)):
-    if released[x]:
-        sys.stdout.write('Downloading "'+titles[x]+'"...')
+for track in data['trackinfo']:
+    if not track['unreleased_track']:
+        file_name = sanitize(str(track['track_num']).zfill(2)+" "+track['title']+".mp3")
+
+        sys.stdout.write('Downloading "'+track['title'].replace('\\', '')+'"...')
         sys.stdout.flush()
 
-        try:
-            with open(directory+str(x+1).zfill(2)+" "+titles[x]+".mp3", 'wb') as mp3:
-                mp3.write(requests.get(urls[0]).content)
-        except IndexError:
-            print(' ERROR.\n"'+titles[x]+'" is a bonus or hidden track. Please download the album from Bandcamp directly to access this track.')
-            os.remove(directory+str(x+1).zfill(2)+" "+titles[x]+".mp3")
+        with open(directory+file_name, 'wb') as mp3:
+            mp3.write(requests.get(track['file']['mp3-128']).content)
 
         try:
-            audio = EasyID3(directory+str(x+1).zfill(2)+" "+titles[x]+".mp3")
+            audio = EasyID3(directory+file_name)
         except mutagen.id3.ID3NoHeaderError:
-            audio = mutagen.File(directory+str(x+1).zfill(2)+" "+titles[x]+".mp3", easy=True)
+            audio = mutagen.File(directory+file_name, easy=True)
             audio.add_tags()
         except mutagen.MutagenError:
             continue
 
-        audio['title'] = titles[x]
-        audio['album'] = album_title
-        audio['artist'] = artist
-        audio['tracknumber'] = str(x+1)
-        audio['date'] = year
+        audio['title'] = track['title'].replace('\\', '')
+        audio['album'] = data['current']['title'].replace('\\', '')
+        audio['artist'] = data['artist'].replace('\\', '')
+        audio['tracknumber'] = str(track['track_num'])
+        audio['date'] = data['album_release_date'][7:11]
         audio.save(v2_version=3)
 
         print(' tagged.')
-        
-        urls.pop(0)
+
         sleep(1)
 
 print('-'*len(prep))
