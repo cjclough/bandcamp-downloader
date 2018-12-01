@@ -1,11 +1,17 @@
+"""
+    /brief A simple script for downloading albums on Bandcamp.
+"""
 import json
-from lxml import html
-import mutagen
-from mutagen.easyid3 import EasyID3
 import os
 import re
-import requests
 import sys
+import mutagen
+import requests
+
+from lxml import html
+from PyQt5.QtWidgets import QApplication   
+from mutagen.easyid3 import EasyID3
+
 
 def sanitize(data):
     return re.sub(r'[\\/:"*?<>|]+', '', data)
@@ -42,19 +48,24 @@ directory = './downloads/'+sanitize(data['artist'])+'/'+sanitize(data['current']
 if not os.path.exists(directory):
     os.makedirs(directory)
 else:
-	if os.listdir(directory):
-		print('Album already downloaded.')
-		exit()
+    if os.listdir(directory):
+        print('Album already downloaded.')
+        exit()
 
 # download album cover
-album_cover = requests.get(str(html.xpath('//link[@rel="image_src"]/@href')).strip('[]\''))
+album_cover = requests.get(
+    str(html.xpath('//link[@rel="image_src"]/@href')).strip('[]\'')
+    )
+    
 print('Downloading album artwork...')
 with open(directory+"cover.jpg", 'wb') as jpg:
     jpg.write(album_cover.content)
 
 for track in data['trackinfo']:
     if not track['unreleased_track']:
-        file_name = sanitize(str(track['track_num']).zfill(2)+" "+track['title']+".mp3")
+        file_name = sanitize(
+            str(track['track_num']).zfill(2)+" "+track['title']+".mp3"
+            )
 
         sys.stdout.write('Downloading "'+track['title'].replace('\\', '')+'"...')
         sys.stdout.flush()
