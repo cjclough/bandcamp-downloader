@@ -8,8 +8,7 @@ import sys
 import mutagen
 import requests
 
-from lxml import html
-from PyQt5.QtWidgets import QApplication   
+from lxml import html 
 from mutagen.easyid3 import EasyID3
 
 
