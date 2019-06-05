@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QApplication
-from Window import Window
+from BandcampDownloader import BandcampDownloader
 import sys
 
 app = QApplication(sys.argv)
-window = Window()
+window = BandcampDownloader()
 sys.exit(app.exec_())
 
 # ---- OLD ---- #

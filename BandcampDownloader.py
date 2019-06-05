@@ -61,7 +61,7 @@ class BandcampDownloader(QMainWindow):
 
         # album cover container
         self.albumContainer = QLabel(self)
-        self.albumContainer.move(5, 70)
+        self.albumContainer.move(5, 70) 
         self.albumContainer.resize(125,125)
 
         self.show()
